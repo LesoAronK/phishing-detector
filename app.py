@@ -1,6 +1,5 @@
 """
 Phishing Email Detector - Flask Backend
-Single-folder version: index.html sits next to app.py (no /templates needed).
 """
 
 from flask import Flask, render_template, request, jsonify
@@ -11,27 +10,44 @@ import os
 import sys
 import subprocess
 
-# template_folder='.' tells Flask to look for index.html in this same folder
-app = Flask(__name__, template_folder='.', static_folder='.', static_url_path='/static_unused')
+app = Flask(__name__)
 
 # ─── Load model ────────────────────────────────────────────────────────────────
-MODEL_PATH = 'model/phishing_model.pkl'
-FEATURES_PATH = 'model/feature_names.pkl'
-METRICS_PATH = 'model/metrics.pkl'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, 'model', 'phishing_model.pkl')
+FEATURES_PATH = os.path.join(BASE_DIR, 'model', 'feature_names.pkl')
+METRICS_PATH = os.path.join(BASE_DIR, 'model', 'metrics.pkl')
 
 model = None
 feature_names = None
 metrics = None
 
+
 def load_model():
+    """Load the trained model. If the model files are missing for any reason
+    (e.g. build step didn't run, or filesystem was reset), train it on the fly
+    so the app can never end up serving with model=None."""
     global model, feature_names, metrics
-    if not os.path.exists(MODEL_PATH):
-        print("Model not found — training now (first run only)...")
-        subprocess.run([sys.executable, 'train_model.py'], check=True)
+
+    if not (os.path.exists(MODEL_PATH) and os.path.exists(FEATURES_PATH) and os.path.exists(METRICS_PATH)):
+        print(">>> Model files missing — training now (one-time, ~10-20s)...", flush=True)
+        train_script = os.path.join(BASE_DIR, 'train_model.py')
+        result = subprocess.run(
+            [sys.executable, train_script],
+            cwd=BASE_DIR,
+            capture_output=True,
+            text=True
+        )
+        print(result.stdout, flush=True)
+        if result.returncode != 0:
+            print(">>> TRAINING FAILED:", result.stderr, flush=True)
+            raise RuntimeError(f"Model training failed: {result.stderr}")
+
     model = joblib.load(MODEL_PATH)
     feature_names = joblib.load(FEATURES_PATH)
     metrics = joblib.load(METRICS_PATH)
-    print("Model loaded successfully.")
+    print(">>> Model loaded successfully. Features:", len(feature_names), flush=True)
+
 
 # ─── Feature Extraction (mirrors train_model.py) ───────────────────────────────
 PHISHING_KEYWORDS = [
@@ -117,7 +133,6 @@ def extract_features(text: str) -> dict:
 
 
 def get_risk_factors(text: str, features: dict) -> list:
-    """Return human-readable risk factors found in the email."""
     factors = []
     text_lower = text.lower()
 
@@ -176,15 +191,15 @@ def analyze():
     features = extract_features(email_text)
     feature_vector = [features.get(f, 0) for f in feature_names]
 
-    import pandas as _pd
-    X_df = _pd.DataFrame([feature_vector], columns=feature_names)
+    import pandas as pd
+    X_df = pd.DataFrame([feature_vector], columns=feature_names)
+
     prediction = int(model.predict(X_df)[0])
     probability = model.predict_proba(X_df)[0]
 
     phishing_prob = float(probability[1])
     safe_prob = float(probability[0])
 
-    # Confidence tier
     if phishing_prob >= 0.85:
         confidence = 'Very High'
     elif phishing_prob >= 0.65:
@@ -196,20 +211,12 @@ def analyze():
 
     risk_factors = get_risk_factors(email_text, features)
 
-    # Feature importance for top triggers
-    importances = model.feature_importances_
-    top_triggers = sorted(
-        zip(feature_names, importances, feature_vector),
-        key=lambda x: x[1] * abs(x[2]),
-        reverse=True
-    )[:5]
-
     return jsonify({
         'prediction': prediction,
         'label': 'Phishing' if prediction == 1 else 'Safe',
         'phishing_probability': round(phishing_prob * 100, 1),
         'safe_probability': round(safe_prob * 100, 1),
-        'confidence': confidence if prediction == 1 else confidence,
+        'confidence': confidence,
         'risk_factors': risk_factors,
         'features': {
             'url_count': features['url_count'],
@@ -228,8 +235,19 @@ def get_metrics():
     return jsonify(metrics)
 
 
-# Load the model immediately on import — this runs whether started via
-# `python app.py` OR via gunicorn (which imports this file, never calling __main__).
+@app.route('/health')
+def health():
+    """Quick endpoint to verify the model is actually loaded."""
+    return jsonify({
+        'model_loaded': model is not None,
+        'feature_names_loaded': feature_names is not None,
+        'num_features': len(feature_names) if feature_names else 0,
+    })
+
+
+# Load the model immediately at import time. This line runs whether the app
+# is started via `python app.py` OR via `gunicorn app:app` (gunicorn imports
+# this module directly and never executes the __main__ block below).
 load_model()
 
 if __name__ == '__main__':
