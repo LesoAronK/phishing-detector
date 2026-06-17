@@ -1,5 +1,6 @@
 """
 Phishing Email Detector - Flask Backend
+Single-folder version: index.html sits next to app.py (no /templates needed).
 """
 
 from flask import Flask, render_template, request, jsonify
@@ -8,8 +9,10 @@ import numpy as np
 import re
 import os
 import sys
+import subprocess
 
-app = Flask(__name__)
+# template_folder='.' tells Flask to look for index.html in this same folder
+app = Flask(__name__, template_folder='.', static_folder='.', static_url_path='/static_unused')
 
 # ─── Load model ────────────────────────────────────────────────────────────────
 MODEL_PATH = 'model/phishing_model.pkl'
@@ -22,14 +25,13 @@ metrics = None
 
 def load_model():
     global model, feature_names, metrics
-    if os.path.exists(MODEL_PATH):
-        model = joblib.load(MODEL_PATH)
-        feature_names = joblib.load(FEATURES_PATH)
-        metrics = joblib.load(METRICS_PATH)
-        print("Model loaded successfully.")
-    else:
-        print("Model not found. Run train_model.py first.")
-        sys.exit(1)
+    if not os.path.exists(MODEL_PATH):
+        print("Model not found — training now (first run only)...")
+        subprocess.run([sys.executable, 'train_model.py'], check=True)
+    model = joblib.load(MODEL_PATH)
+    feature_names = joblib.load(FEATURES_PATH)
+    metrics = joblib.load(METRICS_PATH)
+    print("Model loaded successfully.")
 
 # ─── Feature Extraction (mirrors train_model.py) ───────────────────────────────
 PHISHING_KEYWORDS = [
@@ -226,6 +228,9 @@ def get_metrics():
     return jsonify(metrics)
 
 
+# Load the model immediately on import — this runs whether started via
+# `python app.py` OR via gunicorn (which imports this file, never calling __main__).
+load_model()
+
 if __name__ == '__main__':
-    load_model()
     app.run(debug=True, port=5000)
