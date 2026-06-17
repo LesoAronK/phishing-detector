@@ -14,25 +14,6 @@ A machine learning web app that classifies emails as **Phishing** or **Safe** us
 - **Risk Factors**: Human-readable breakdown of suspicious signals
 - **Dark UI**: Modern, responsive interface
 
-## Quick Start
-
-```bash
-# 1. Clone
-git clone https://github.com/YOUR_USERNAME/phishguard.git
-cd phishguard
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Train the model (creates model/ directory)
-python train_model.py
-
-# 4. Run the app
-python app.py
-```
-
-Open `http://localhost:5000` in your browser.
-
 ## Project Structure
 
 ```
@@ -69,20 +50,6 @@ phishguard/
 3. Keyword Ratio (15.4%)
 4. Phishing Keyword Count (10.2%)
 5. Safe Keyword Count (7.8%)
-
-## Deploy to Railway
-
-1. Push to GitHub
-2. Go to [railway.app](https://railway.app) → New Project → Deploy from GitHub
-3. Set `python train_model.py && gunicorn app:app` as start command
-4. Done!
-
-## Deploy to Render
-
-1. Push to GitHub
-2. New Web Service on [render.com](https://render.com)
-3. Build Command: `pip install -r requirements.txt && python train_model.py`
-4. Start Command: `gunicorn app:app`
 
 ## API Usage
 
