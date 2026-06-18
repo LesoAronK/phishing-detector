@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Email Threat Analyzer — Forensic Phishing Detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="logo">
+      <span class="logo-mark">◈</span>
+      <span class="logo-text">Email Threat Analyzer</span>
+    </a>
+    <div class="nav-links">
+      <a href="#analyzer" class="nav-link">Analyzer</a>
+      <a href="#model-stats" class="nav-link">Model Stats</a>
+      <a href="#how-it-works" class="nav-link">Methodology</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="hero-texture"></div>
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <div class="hero-eyebrow">
+          <span class="eyebrow-line"></span>
+          Forensic email analysis
+        </div>
+        <h1 class="hero-title">
+          Every phishing email <em>leaves a trace.</em>
+        </h1>
+        <p class="hero-sub">
+          Paste a suspicious email and a Random Forest model — trained on 27 structural
+          and linguistic signals — examines it the way an analyst would: looking past the words,
+          straight to the tell.
+        </p>
+        <a href="#analyzer" class="hero-cta">
+          Examine an email
+          <span class="cta-arrow">⟶</span>
+        </a>
+      </div>
+
+      <div class="hero-panel">
+        <div class="hero-panel-label">Model dossier</div>
+        <div class="hero-panel-row">
+          <span class="panel-key">Classifier</span>
+          <span class="panel-val">Random Forest · 200 estimators</span>
+        </div>
+        <div class="hero-panel-row">
+          <span class="panel-key">Signals examined</span>
+          <span class="panel-val">27 features</span>
+        </div>
+        <div class="hero-panel-row">
+          <span class="panel-key">Test accuracy</span>
+          <span class="panel-val accent-val">100%</span>
+        </div>
+        <div class="hero-panel-row">
+          <span class="panel-key">AUC&#8211;ROC</span>
+          <span class="panel-val accent-val">1.00</span>
+        </div>
+        <div class="hero-panel-divider"></div>
+        <div class="hero-panel-foot">Trained on 2,000 labeled email samples</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Analyzer ── -->
+<section id="analyzer" class="section analyzer-section">
+  <div class="container">
+    <div class="section-tag">Case File №1</div>
+    <div class="analyzer-grid">
+
+      <!-- Input panel -->
+      <div class="panel input-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Submit for analysis</h2>
+          <p class="panel-sub">Paste the complete email — subject, body, and any links</p>
+        </div>
+
+        <div class="samples-bar">
+          <span class="samples-label">Reference samples</span>
+          <button class="sample-btn danger-sample" data-type="phishing">Known phishing</button>
+          <button class="sample-btn safe-sample" data-type="safe">Known legitimate</button>
+        </div>
+
+        <div class="textarea-wrap">
+          <textarea
+            id="emailInput"
+            class="email-textarea"
+            placeholder="Subject: Urgent account verification required
+
+From: security@example-bank.com
+
+Dear Customer,
+
+We noticed unusual activity on your account..."></textarea>
+        </div>
+
+        <div class="char-counter"><span id="charCount">0</span> characters</div>
+
+        <button id="analyzeBtn" class="analyze-btn" onclick="analyzeEmail()">
+          <span class="btn-text">Run analysis</span>
+          <span class="btn-icon">⟶</span>
+        </button>
+      </div>
+
+      <!-- Results panel -->
+      <div class="panel results-panel" id="resultsPanel">
+        <div class="results-placeholder" id="placeholder">
+          <div class="placeholder-mark">◈</div>
+          <p>Findings will be reported here</p>
+        </div>
+
+        <div class="results-content" id="resultsContent" style="display:none">
+
+          <!-- Verdict -->
+          <div class="verdict-card" id="verdictCard">
+            <div class="verdict-seal" id="verdictSeal"></div>
+            <div class="verdict-info">
+              <div class="verdict-eyebrow">Verdict</div>
+              <div class="verdict-label" id="verdictLabel"></div>
+              <div class="verdict-confidence" id="verdictConfidence"></div>
+            </div>
+          </div>
+
+          <!-- Probability bars -->
+          <div class="prob-section">
+            <div class="prob-row">
+              <span class="prob-label safe-label">Legitimate</span>
+              <div class="prob-bar-track">
+                <div class="prob-bar safe-bar" id="safeBar"></div>
+              </div>
+              <span class="prob-pct" id="safePct">—</span>
+            </div>
+            <div class="prob-row">
+              <span class="prob-label phish-label">Phishing</span>
+              <div class="prob-bar-track">
+                <div class="prob-bar phish-bar" id="phishBar"></div>
+              </div>
+              <span class="prob-pct" id="phishPct">—</span>
+            </div>
+          </div>
+
+          <!-- Quick metrics -->
+          <div class="metrics-grid" id="featureGrid"></div>
+
+          <!-- Risk factors -->
+          <div class="risk-section">
+            <h3 class="risk-title">Evidence log</h3>
+            <div id="riskFactors"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Model Stats ── -->
+<section id="model-stats" class="section stats-section">
+  <div class="container">
+    <div class="section-tag">Case File №2</div>
+    <div class="section-header">
+      <h2 class="section-title">Model performance</h2>
+      <p class="section-sub">Evaluated on a held-out test set of 400 emails, stratified 80/20</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">100%</div>
+        <div class="stat-name">Accuracy</div>
+        <div class="stat-desc">Correct classifications on unseen data</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">1.00</div>
+        <div class="stat-name">AUC&#8211;ROC</div>
+        <div class="stat-desc">Perfect separation between classes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">200</div>
+        <div class="stat-name">Trees</div>
+        <div class="stat-desc">Decision trees in the ensemble</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">1,600</div>
+        <div class="stat-name">Training set</div>
+        <div class="stat-desc">Phishing &amp; legitimate examples</div>
+      </div>
+    </div>
+
+    <!-- Confusion Matrix -->
+    <div class="cm-section">
+      <h3 class="cm-title">Confusion matrix</h3>
+      <div class="cm-wrap">
+        <div class="cm-table-wrap">
+          <table class="cm-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th class="cm-head">Predicted legitimate</th>
+                <th class="cm-head">Predicted phishing</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th class="cm-row-head">Actual legitimate</th>
+                <td class="cm-cell tn">200<br><span class="cm-sub">True negative</span></td>
+                <td class="cm-cell fp">0<br><span class="cm-sub">False positive</span></td>
+              </tr>
+              <tr>
+                <th class="cm-row-head">Actual phishing</th>
+                <td class="cm-cell fn">0<br><span class="cm-sub">False negative</span></td>
+                <td class="cm-cell tp">200<br><span class="cm-sub">True positive</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cm-legend">
+          <div class="legend-item"><span class="leg-dot tn-dot"></span>Correctly cleared legitimate mail</div>
+          <div class="legend-item"><span class="leg-dot tp-dot"></span>Correctly flagged phishing</div>
+          <div class="legend-item"><span class="leg-dot fp-dot"></span>False alarms — legitimate flagged as phishing</div>
+          <div class="legend-item"><span class="leg-dot fn-dot"></span>Missed threats — phishing cleared as safe</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Features -->
+    <div class="features-section">
+      <h3 class="cm-title">Most influential signals</h3>
+      <div class="feature-bars">
+        <div class="feat-row">
+          <span class="feat-name">URL count</span>
+          <div class="feat-bar-track"><div class="feat-bar" style="width:100%"></div></div>
+          <span class="feat-pct">26.1%</span>
+        </div>
+        <div class="feat-row">
+          <span class="feat-name">Insecure HTTP links</span>
+          <div class="feat-bar-track"><div class="feat-bar" style="width:75.5%"></div></div>
+          <span class="feat-pct">19.7%</span>
+        </div>
+        <div class="feat-row">
+          <span class="feat-name">Keyword ratio</span>
+          <div class="feat-bar-track"><div class="feat-bar" style="width:59.1%"></div></div>
+          <span class="feat-pct">15.4%</span>
+        </div>
+        <div class="feat-row">
+          <span class="feat-name">Phishing keywords</span>
+          <div class="feat-bar-track"><div class="feat-bar" style="width:39.2%"></div></div>
+          <span class="feat-pct">10.2%</span>
+        </div>
+        <div class="feat-row">
+          <span class="feat-name">Safe keywords</span>
+          <div class="feat-bar-track"><div class="feat-bar" style="width:30.0%"></div></div>
+          <span class="feat-pct">7.8%</span>
+        </div>
+        <div class="feat-row">
+          <span class="feat-name">Avg. word length</span>
+          <div class="feat-bar-track"><div class="feat-bar" style="width:26.6%"></div></div>
+          <span class="feat-pct">6.9%</span>
+        </div>
+        <div class="feat-row">
+          <span class="feat-name">Capitalization ratio</span>
+          <div class="feat-bar-track"><div class="feat-bar" style="width:17.8%"></div></div>
+          <span class="feat-pct">4.6%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── How It Works ── -->
+<section id="how-it-works" class="section how-section">
+  <div class="container">
+    <div class="section-tag">Case File №3</div>
+    <div class="section-header">
+      <h2 class="section-title">Methodology</h2>
+      <p class="section-sub">How a paragraph of text becomes a verdict</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-mark">I</div>
+        <h3 class="step-title">Intake</h3>
+        <p class="step-desc">The raw email — subject, body, embedded links and markup — is received exactly as written.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-mark">II</div>
+        <h3 class="step-title">Feature extraction</h3>
+        <p class="step-desc">27 measurements are taken: link patterns, keyword frequency, urgency language, capitalization, greeting style, and more.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-mark">III</div>
+        <h3 class="step-title">Ensemble vote</h3>
+        <p class="step-desc">200 decision trees independently weigh the evidence. The majority verdict becomes the model's output.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-mark">IV</div>
+        <h3 class="step-title">Report</h3>
+        <p class="step-desc">A verdict, a confidence score, and the specific evidence behind it — in plain language, not a black box.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer class="footer">
+  <div class="container footer-inner">
+    <span class="logo-text">◈ Email Threat Analyzer</span>
+    <span class="footer-note">scikit&#8209;learn · Random Forest · Flask — built for educational purposes</span>
+  </div>
+</footer>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
