@@ -61,16 +61,16 @@ It also includes a Model Stats section showing the actual accuracy, confusion ma
 
 ```
 email-threat-analyzer/
-├── app.py              # Flask backend: routes, feature extraction, prediction logic
-├── train_model.py      # Generates training data and trains the Random Forest model
-├── requirements.txt    # Python dependencies
-├── Procfile             # Tells Render/Heroku how to start the app
+├── app.py              
+├── train_model.py      
+├── requirements.txt    
+├── Procfile             
 ├── templates/
-│   └── index.html       # Main page markup
+│   └── index.html       
 ├── static/
-│   ├── css/style.css    # Dark UI styling
-│   └── js/app.js        # Frontend logic — calls the API, renders results
-└── model/                # Auto-generated on first run (not committed to git)
+│   ├── css/style.css
+│   └── js/app.js        
+└── model/                
     ├── phishing_model.pkl
     ├── feature_names.pkl
     └── metrics.pkl
